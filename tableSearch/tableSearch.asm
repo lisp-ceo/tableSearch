@@ -6,7 +6,8 @@
 ;
 
 ; Define here the variables
-.def  temp  =r16
+.def  temp  =r16 ; temp stores the current value we're looking into in the table
+.def  maxVal =r17 ; maxVal stores the largest value found in the array
 
 ; Define here Reset and interrupt vectors, if any
 ; the only one at the moment is the reset vector
@@ -40,24 +41,28 @@ start:		; start here
 	LDI ZH, high(Tble<<1)	; Initialize Z-pointer
 	LDI ZL, low(Tble<<1)	; a byte at a time  (why <<1?)
 
+
+
 loop:
-	LPM temp, Z ; Load constant from table in memory pointed to by Z (r31:r30)
-	NOP         ;you will want to do something more useful here
-	NOP
-	NOP
+	LPM temp, Z				; Load constant from table in memory pointed to by Z (r31:r30)
+	CP maxVal, temp         ; Equivalent to if(temp - maxVal > 0) { call assignMaxVal }
+	BRLO assignMaxVal       ; 
+incr:
 	INC ZL 		; move the array pointer
-
-; Note here that we only increment and compare the lower byte
-; (very risky - why risky?).
-
+	; Note here that we only increment and compare the lower byte
+	; (very risky - why risky?).
 	CPI ZL, LOW((Tble << 1) + 64) ; Tble+64 is one past the final entry
 	BRNE loop
 
-here:
-   JMP skrt  ; why do we need this?
-
 skrt:
-	JMP skrt;
+	JMP exit
+
+assignMaxVal:
+	MOV maxVal, temp		; Initialize maxVal ; TODO this should be the minium value expressable (We just use unsigned ints here)
+	JMP incr				; Once updated, jump back to incrementing the table cursor (pointer to current value in table we're comparing against the largest)
+
+exit:
+	RET
 
 ; Create 64 bytes in code memory of table to search.
 ; The DC directive defines constants in (code) memory
@@ -72,6 +77,3 @@ Tble:
 	.DB 170, 229, 132, 180,  40, 244, 138, 174
 	.DB  28, 162, 252,  55,  26, 211,  45,  58
 .exit  ;done
-
-
-
